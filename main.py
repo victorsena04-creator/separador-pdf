@@ -99,33 +99,39 @@ def obter_nome_unico_saida(pasta_saida, nome_base, placas_geradas):
         return os.path.join(pasta_saida, f"{nome_base}_{contador}.pdf")
 
 
-def processar_pdf(caminho_pdf, logger):
+def processar_pdf(caminho_pdf, logger, output_dir=None, progress_callback=None):
     """Processa o PDF dividindo suas páginas e identificando as placas."""
+    if output_dir is None:
+        output_dir = OUTPUT_DIR
     logger.info(f"Iniciando processamento do PDF: {caminho_pdf}")
 
     try:
-        # Abrir o leitor para verificar integridade e criptografia
         with open(caminho_pdf, 'rb') as f:
             leitor = pypdf.PdfReader(f)
             if leitor.is_encrypted:
                 logger.error("O arquivo PDF está protegido por senha. Processamento abortado.")
-                print(f"🚨 Erro: O arquivo '{os.path.basename(caminho_pdf)}' está protegido por senha e não pode ser lido.")
-                return
+                msg = f"Erro: '{os.path.basename(caminho_pdf)}' está protegido por senha."
+                if progress_callback:
+                    progress_callback("error", msg)
+                return {"erro": msg}
 
             total_paginas = len(leitor.pages)
 
         logger.info(f"Total de páginas detectadas: {total_paginas}")
     except Exception as e:
         logger.error(f"Erro ao abrir o arquivo PDF: {e}")
-        print(f"🚨 Erro ao ler o arquivo PDF: {e}")
-        return
+        msg = f"Erro ao ler o PDF: {e}"
+        if progress_callback:
+            progress_callback("error", msg)
+        return {"erro": msg}
 
-    # Estatísticas do processamento
     placas_encontradas = 0
     paginas_sem_placa = 0
     placas_geradas_nesta_rodada = {}
 
-    # Abrir com pdfplumber para extração direta de texto
+    if progress_callback:
+        progress_callback("status", f"Processando {os.path.basename(caminho_pdf)} - 0/{total_paginas} páginas")
+
     try:
         pdf_plumber_doc = pdfplumber.open(caminho_pdf)
     except Exception as e:
@@ -139,7 +145,6 @@ def processar_pdf(caminho_pdf, logger):
         placa = None
         estrategia_usada = "Nenhuma"
 
-        # Estratégia 1: Extração Direta (pdfplumber)
         if pdf_plumber_doc:
             try:
                 pagina = pdf_plumber_doc.pages[i]
@@ -151,11 +156,9 @@ def processar_pdf(caminho_pdf, logger):
             except Exception as e:
                 logger.warning(f"Página {numero_pagina}: Falha na extração direta de texto: {e}. Tentando OCR...")
 
-        # Estratégia 2: OCR com Pytesseract (Fallback)
         if not placa:
             logger.info(f"Página {numero_pagina}: Iniciando fallback OCR...")
             try:
-                # Converter a página específica para imagem
                 imagens = convert_from_path(
                     caminho_pdf,
                     dpi=300,
@@ -164,11 +167,9 @@ def processar_pdf(caminho_pdf, logger):
                 )
                 if imagens:
                     imagem_pagina = imagens[0]
-                    # Executar OCR
                     texto_ocr = pytesseract.image_to_string(imagem_pagina, lang='por')
                     placa = extrair_placa_com_regex(texto_ocr)
 
-                    # Se falhar em português, tenta em inglês
                     if not placa:
                         logger.info(f"Página {numero_pagina}: Não encontrada placa com lang='por'. Tentando lang='eng'...")
                         texto_ocr_eng = pytesseract.image_to_string(imagem_pagina, lang='eng')
@@ -178,29 +179,18 @@ def processar_pdf(caminho_pdf, logger):
                         estrategia_usada = "OCR (pytesseract)"
                         logger.info(f"Página {numero_pagina}: Placa '{placa}' encontrada via OCR.")
             except pytesseract.TesseractNotFoundError:
-                msg_erro = (
-                    "O executável do Tesseract OCR não foi encontrado no sistema.\n"
-                    "Por favor, certifique-se de que o Tesseract está instalado e configurado no PATH.\n"
-                    "No Windows: Baixe o instalador e adicione a pasta de instalação nas Variáveis de Ambiente.\n"
-                    "No Linux: execute 'sudo apt install tesseract-ocr tesseract-ocr-por'\n"
-                    "No macOS: execute 'brew install tesseract'"
-                )
+                msg_erro = "Tesseract OCR não encontrado no sistema."
                 logger.error(f"Página {numero_pagina}: {msg_erro}")
-                print(f"\n🚨 AVISO DE SISTEMA: {msg_erro}\n")
+                if progress_callback:
+                    progress_callback("warning", f"⚠️ {msg_erro}")
             except (PDFInfoNotInstalledError, PDFPageCountError) as e:
-                msg_erro = (
-                    "O Poppler não está instalado ou configurado no PATH do sistema. "
-                    "Ele é necessário para converter páginas de PDF em imagem para o OCR.\n"
-                    "No Windows: Baixe o Poppler para Windows, extraia e adicione a pasta 'bin' ao PATH.\n"
-                    "No Linux: execute 'sudo apt install poppler-utils'\n"
-                    "No macOS: execute 'brew install poppler'"
-                )
+                msg_erro = "Poppler não instalado ou configurado."
                 logger.error(f"Página {numero_pagina}: Poppler ausente. {e}")
-                print(f"\n🚨 AVISO DE SISTEMA: {msg_erro}\n")
+                if progress_callback:
+                    progress_callback("warning", f"⚠️ {msg_erro}")
             except Exception as e:
                 logger.error(f"Página {numero_pagina}: Erro durante processamento de OCR: {e}")
 
-        # Definir o nome do arquivo final
         if placa:
             placas_encontradas += 1
             nome_sanitizado = sanitizar_nome_arquivo(placa)
@@ -210,7 +200,6 @@ def processar_pdf(caminho_pdf, logger):
             nome_sanitizado = f"PAGINA_{numero_pagina}_SEM_PLACA"
             logger.warning(f"Página {numero_pagina}: Nenhuma placa encontrada. Nomeando como: {nome_sanitizado}")
 
-        # Salvar a página individual
         try:
             leitor_individual = pypdf.PdfReader(caminho_pdf)
             pagina_selecionada = leitor_individual.pages[i]
@@ -218,42 +207,49 @@ def processar_pdf(caminho_pdf, logger):
             escritor = pypdf.PdfWriter()
             escritor.add_page(pagina_selecionada)
 
-            caminho_saida = obter_nome_unico_saida(OUTPUT_DIR, nome_sanitizado, placas_geradas_nesta_rodada)
+            caminho_saida = obter_nome_unico_saida(output_dir, nome_sanitizado, placas_geradas_nesta_rodada)
 
             with open(caminho_saida, 'wb') as f_saida:
                 escritor.write(f_saida)
             
             logger.info(f"Página {numero_pagina}: Salva com sucesso em {caminho_saida} (Estratégia: {estrategia_usada})")
         except PermissionError as e:
-            logger.error(f"Página {numero_pagina}: Permissão negada ao salvar arquivo em {OUTPUT_DIR}: {e}")
-            print(f"🚨 Erro de permissão ao salvar a página {numero_pagina} em {OUTPUT_DIR}: {e}")
+            logger.error(f"Página {numero_pagina}: Permissão negada ao salvar arquivo em {output_dir}: {e}")
+            if progress_callback:
+                progress_callback("error", f"Erro de permissão: {e}")
         except Exception as e:
             logger.error(f"Página {numero_pagina}: Erro ao extrair e salvar a página: {e}")
-            print(f"🚨 Erro ao salvar a página {numero_pagina}: {e}")
+            if progress_callback:
+                progress_callback("error", f"Erro ao salvar: {e}")
+
+        if progress_callback:
+            progress_callback("progress", numero_pagina, total_paginas)
 
     if pdf_plumber_doc:
         pdf_plumber_doc.close()
 
-    # Exclusão automática do PDF original após processamento completo e bem-sucedido de todas as páginas
     if total_paginas > 0 and (placas_encontradas + paginas_sem_placa) == total_paginas:
         try:
             logger.info(f"Removendo o arquivo PDF original com sucesso: {caminho_pdf}")
             os.remove(caminho_pdf)
-            print(f"🗑️  Arquivo original removido com sucesso: {os.path.basename(caminho_pdf)}")
         except Exception as e:
             logger.error(f"Erro ao tentar remover o arquivo original {caminho_pdf}: {e}")
-            print(f"🚨 Não foi possível remover o arquivo original da pasta 'input': {e}")
 
-    # Exibição do resumo do processamento
     logger.info("=== Processamento concluído com sucesso ===")
     logger.info(f"Resumo: Páginas processadas={total_paginas}, Placas encontradas={placas_encontradas}, Sem placa={paginas_sem_placa}")
 
-    print("\n✅ Processamento concluído!")
-    print(f"📄 PDF processado: {os.path.basename(caminho_pdf)}")
-    print(f"📑 Total de páginas: {total_paginas}")
-    print(f"✅ Placas encontradas: {placas_encontradas}")
-    print(f"⚠️  Páginas sem placa: {paginas_sem_placa}")
-    print(f"📁 Arquivos salvos em: {OUTPUT_DIR}\n")
+    resultado = {
+        "arquivo": os.path.basename(caminho_pdf),
+        "total_paginas": total_paginas,
+        "placas_encontradas": placas_encontradas,
+        "paginas_sem_placa": paginas_sem_placa,
+        "output_dir": output_dir
+    }
+
+    if progress_callback:
+        progress_callback("complete", resultado)
+
+    return resultado
 
 
 def main():

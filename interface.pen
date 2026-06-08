@@ -1,0 +1,300 @@
+{
+  "version": "2.13",
+  "themes": {
+    "Mode": ["Light", "Dark"]
+  },
+  "variables": {
+    "bg-window": {
+      "type": "color",
+      "value": "#F0F0F0"
+    },
+    "bg-surface": {
+      "type": "color",
+      "value": "#FFFFFF"
+    },
+    "bg-field": {
+      "type": "color",
+      "value": "#E8E8E8"
+    },
+    "border-light": {
+      "type": "color",
+      "value": "#CCCCCC"
+    },
+    "border-field": {
+      "type": "color",
+      "value": "#BBBBBB"
+    },
+    "text-primary": {
+      "type": "color",
+      "value": "#333333"
+    },
+    "text-secondary": {
+      "type": "color",
+      "value": "#555555"
+    },
+    "text-muted": {
+      "type": "color",
+      "value": "#888888"
+    },
+    "text-status": {
+      "type": "color",
+      "value": "#666666"
+    },
+    "btn-primary-bg": {
+      "type": "color",
+      "value": "#4A4A4A"
+    },
+    "btn-primary-text": {
+      "type": "color",
+      "value": "#FFFFFF"
+    },
+    "btn-secondary-bg": {
+      "type": "color",
+      "value": "#D0D0D0"
+    },
+    "btn-secondary-text": {
+      "type": "color",
+      "value": "#333333"
+    },
+    "btn-hover": {
+      "type": "color",
+      "value": "#333333"
+    },
+    "shadow": {
+      "type": "color",
+      "value": "#00000019"
+    }
+  },
+  "children": [
+    {
+      "type": "frame",
+      "id": "w6jZY2",
+      "name": "Folder Button",
+      "reusable": true,
+      "layout": "horizontal",
+      "width": 100,
+      "height": 36,
+      "padding": [0, 12],
+      "cornerRadius": 4,
+      "fill": "$btn-secondary-bg",
+      "alignItems": "center",
+      "justifyContent": "center",
+      "x": 0,
+      "y": -120,
+      "children": [
+        {
+          "type": "text",
+          "id": "oAl2f",
+          "name": "Label",
+          "fontFamily": "Inter",
+          "fontSize": 13,
+          "fontWeight": "600",
+          "content": "Selecionar",
+          "fill": "$btn-secondary-text"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "d7ycGr",
+      "name": "Execute Button",
+      "reusable": true,
+      "layout": "horizontal",
+      "width": 260,
+      "height": 48,
+      "padding": [0, 20],
+      "cornerRadius": 8,
+      "fill": "$btn-primary-bg",
+      "alignItems": "center",
+      "justifyContent": "center",
+      "x": 1040,
+      "y": -120,
+      "children": [
+        {
+          "type": "text",
+          "id": "MMdRR",
+          "name": "Label",
+          "fontFamily": "Inter",
+          "fontSize": 16,
+          "fontWeight": "700",
+          "content": "EXECUTAR SEPARAÇÃO",
+          "fill": "$btn-primary-text"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "mMTXK",
+      "name": "Folder Field",
+      "reusable": true,
+      "layout": "horizontal",
+      "width": 320,
+      "height": 36,
+      "padding": [0, 12],
+      "cornerRadius": 4,
+      "fill": "$bg-field",
+      "alignItems": "center",
+      "x": 1340,
+      "y": -120,
+      "children": [
+        {
+          "type": "text",
+          "id": "Ddhgf",
+          "name": "Path Text",
+          "fontFamily": "Inter",
+          "fontSize": 13,
+          "content": "C:\\...\\input",
+          "fill": "$text-muted"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "name": "App Window",
+      "layout": "vertical",
+      "width": 580,
+      "height": 440,
+      "cornerRadius": 12,
+      "fill": "$bg-window",
+      "clip": true,
+      "gap": 12,
+      "padding": [32, 36, 28, 36],
+      "x": 100,
+      "y": 100,
+      "children": [
+        {
+          "type": "frame",
+          "name": "Title Row",
+          "layout": "horizontal",
+          "gap": 8,
+          "alignItems": "center",
+          "width": "fill_container",
+          "children": [
+            {
+              "type": "text",
+              "name": "Title",
+              "fontFamily": "Inter",
+              "fontSize": 20,
+              "fontWeight": "700",
+              "content": "Separador de PDF",
+              "fill": "$text-primary"
+            }
+          ]
+        },
+        {
+          "type": "rectangle",
+          "name": "Separator",
+          "width": "fill_container",
+          "height": 1,
+          "fill": "$border-light"
+        },
+        {
+          "type": "frame",
+          "name": "IO Card",
+          "layout": "vertical",
+          "gap": 14,
+          "width": "fill_container",
+          "padding": [20, 20, 18, 20],
+          "cornerRadius": 8,
+          "fill": "$bg-surface",
+          "children": [
+            {
+              "type": "text",
+              "name": "Input Label",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "600",
+              "content": "Pasta de Entrada",
+              "fill": "$text-secondary"
+            },
+            {
+              "type": "frame",
+              "name": "Input Row",
+              "layout": "horizontal",
+              "gap": 8,
+              "alignItems": "center",
+              "width": "fill_container",
+              "children": [
+                {
+                  "type": "ref",
+                  "name": "Input Field",
+                  "ref": "mMTXK",
+                  "width": "fill_container",
+                  "descendants": {
+                    "Ddhgf": {
+                      "content": "C:\\...\\input"
+                    }
+                  }
+                },
+                {
+                  "type": "ref",
+                  "name": "Input Browse Button",
+                  "ref": "w6jZY2"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "name": "Output Label",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "600",
+              "content": "Pasta de Sa\u00edda",
+              "fill": "$text-secondary"
+            },
+            {
+              "type": "frame",
+              "name": "Output Row",
+              "layout": "horizontal",
+              "gap": 8,
+              "alignItems": "center",
+              "width": "fill_container",
+              "children": [
+                {
+                  "type": "ref",
+                  "name": "Output Field",
+                  "ref": "mMTXK",
+                  "width": "fill_container",
+                  "descendants": {
+                    "Ddhgf": {
+                      "content": "C:\\...\\output"
+                    }
+                  }
+                },
+                {
+                  "type": "ref",
+                  "name": "Output Browse Button",
+                  "ref": "w6jZY2"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "name": "Execute Row",
+          "layout": "horizontal",
+          "alignItems": "center",
+          "justifyContent": "center",
+          "padding": [4, 0, 0, 0],
+          "width": "fill_container",
+          "children": [
+            {
+              "type": "ref",
+              "name": "Execute Button Instance",
+              "ref": "d7ycGr"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "name": "Status",
+          "fontFamily": "Inter",
+          "fontSize": 12,
+          "content": "Status: Aguardando...",
+          "fill": "$text-status"
+        }
+      ]
+    }
+  ]
+}
