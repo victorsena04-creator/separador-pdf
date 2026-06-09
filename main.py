@@ -82,21 +82,54 @@ def extrair_placa_com_regex(texto):
     return None
 
 
+def extrair_data_pagamento(texto):
+    """
+    Busca 'Data de Pagamento:' no texto e retorna a data normalizada como DD-MM-YYYY.
+    Aceita formatos: DD/MM/AAAA, DDMMAAAA, DD-MM-YYYY, DD.MM.YYYY.
+    Retorna 'SEM_DATA' se não encontrar.
+    """
+    if not texto:
+        return "SEM_DATA"
+
+    padrao = re.compile(
+        r'data\s+de\s+pagamento\s*:\s*'
+        r'(\d{1,2})\s*[/.-]\s*(\d{1,2})\s*[/.-]\s*(\d{2,4})',
+        re.IGNORECASE
+    )
+    match = padrao.search(texto)
+    if match:
+        dia, mes, ano = match.group(1), match.group(2), match.group(3)
+        dia = dia.zfill(2)
+        mes = mes.zfill(2)
+        if len(ano) == 2:
+            ano = "20" + ano
+        return f"{dia}-{mes}-{ano}"
+
+    padrao_compacto = re.compile(
+        r'data\s+de\s+pagamento\s*:\s*(\d{2})(\d{2})(\d{4})',
+        re.IGNORECASE
+    )
+    match2 = padrao_compacto.search(texto)
+    if match2:
+        dia, mes, ano = match2.group(1), match2.group(2), match2.group(3)
+        return f"{dia}-{mes}-{ano}"
+
+    return "SEM_DATA"
 
 
-def obter_nome_unico_saida(pasta_saida, nome_base, placas_geradas):
+def obter_nome_unico_saida(pasta_saida, nome_base, data_pagamento, placas_geradas):
     """
-    Retorna o caminho de saída com base apenas nas placas já processadas nesta rodada atual.
-    Se for a primeira vez que a placa aparece nesta rodada, usa o nome base.
-    Caso contrário, adiciona um sufixo numérico (_2, _3, etc).
+    Retorna o caminho de saída com placa + data + sufixo de duplicidade.
+    Formato: {PLACA}_{DATA}.pdf ou {PLACA}_{DATA}_{N}.pdf
     """
-    if nome_base not in placas_geradas:
-        placas_geradas[nome_base] = 1
-        return os.path.join(pasta_saida, f"{nome_base}.pdf")
+    chave = f"{nome_base}_{data_pagamento}"
+    if chave not in placas_geradas:
+        placas_geradas[chave] = 1
+        return os.path.join(pasta_saida, f"{nome_base}_{data_pagamento}.pdf")
     else:
-        placas_geradas[nome_base] += 1
-        contador = placas_geradas[nome_base]
-        return os.path.join(pasta_saida, f"{nome_base}_{contador}.pdf")
+        placas_geradas[chave] += 1
+        contador = placas_geradas[chave]
+        return os.path.join(pasta_saida, f"{nome_base}_{data_pagamento}_{contador}.pdf")
 
 
 def processar_pdf(caminho_pdf, logger, output_dir=None, progress_callback=None):
@@ -143,6 +176,7 @@ def processar_pdf(caminho_pdf, logger, output_dir=None, progress_callback=None):
         logger.info(f"--- Processando página {numero_pagina}/{total_paginas} ---")
 
         placa = None
+        data_pagamento = None
         estrategia_usada = "Nenhuma"
 
         if pdf_plumber_doc:
@@ -150,6 +184,7 @@ def processar_pdf(caminho_pdf, logger, output_dir=None, progress_callback=None):
                 pagina = pdf_plumber_doc.pages[i]
                 texto_direto = pagina.extract_text()
                 placa = extrair_placa_com_regex(texto_direto)
+                data_pagamento = extrair_data_pagamento(texto_direto)
                 if placa:
                     estrategia_usada = "Extração Direta (pdfplumber)"
                     logger.info(f"Página {numero_pagina}: Placa '{placa}' encontrada via Extração Direta.")
@@ -169,11 +204,14 @@ def processar_pdf(caminho_pdf, logger, output_dir=None, progress_callback=None):
                     imagem_pagina = imagens[0]
                     texto_ocr = pytesseract.image_to_string(imagem_pagina, lang='por')
                     placa = extrair_placa_com_regex(texto_ocr)
+                    data_pagamento = extrair_data_pagamento(texto_ocr)
 
                     if not placa:
                         logger.info(f"Página {numero_pagina}: Não encontrada placa com lang='por'. Tentando lang='eng'...")
                         texto_ocr_eng = pytesseract.image_to_string(imagem_pagina, lang='eng')
                         placa = extrair_placa_com_regex(texto_ocr_eng)
+                        if data_pagamento == "SEM_DATA":
+                            data_pagamento = extrair_data_pagamento(texto_ocr_eng)
 
                     if placa:
                         estrategia_usada = "OCR (pytesseract)"
@@ -194,10 +232,13 @@ def processar_pdf(caminho_pdf, logger, output_dir=None, progress_callback=None):
         if placa:
             placas_encontradas += 1
             nome_sanitizado = sanitizar_nome_arquivo(placa)
-            logger.info(f"Página {numero_pagina}: Nome sanitizado para salvar: {nome_sanitizado}")
+            if not data_pagamento:
+                data_pagamento = "SEM_DATA"
+            logger.info(f"Página {numero_pagina}: Nome: {nome_sanitizado}_{data_pagamento}")
         else:
             paginas_sem_placa += 1
             nome_sanitizado = f"PAGINA_{numero_pagina}_SEM_PLACA"
+            data_pagamento = "SEM_DATA"
             logger.warning(f"Página {numero_pagina}: Nenhuma placa encontrada. Nomeando como: {nome_sanitizado}")
 
         try:
@@ -207,7 +248,7 @@ def processar_pdf(caminho_pdf, logger, output_dir=None, progress_callback=None):
             escritor = pypdf.PdfWriter()
             escritor.add_page(pagina_selecionada)
 
-            caminho_saida = obter_nome_unico_saida(output_dir, nome_sanitizado, placas_geradas_nesta_rodada)
+            caminho_saida = obter_nome_unico_saida(output_dir, nome_sanitizado, data_pagamento, placas_geradas_nesta_rodada)
 
             with open(caminho_saida, 'wb') as f_saida:
                 escritor.write(f_saida)

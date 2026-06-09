@@ -1,5 +1,6 @@
 import os
 import sys
+import json
 import threading
 import glob
 import logging
@@ -29,6 +30,26 @@ BTN_PRIMARY_TEXT = "#FFFFFF"
 BTN_SECONDARY_BG = "#D0D0D0"
 BTN_SECONDARY_TEXT = "#333333"
 
+CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
+
+
+def carregar_config():
+    if os.path.exists(CONFIG_PATH):
+        try:
+            with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+
+def salvar_config(input_dir, output_dir):
+    try:
+        with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+            json.dump({"input_dir": input_dir, "output_dir": output_dir}, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
 
 class PDFSplitterApp:
     def __init__(self):
@@ -44,6 +65,7 @@ class PDFSplitterApp:
 
         ctk.set_appearance_mode("light")
         self._build_ui()
+        self._carregar_caminhos()
 
     def _build_ui(self):
         container = ctk.CTkFrame(self.app, fg_color=BG_WINDOW, corner_radius=0)
@@ -161,6 +183,17 @@ class PDFSplitterApp:
         )
         self.log_text.pack(fill="x", pady=(8, 0))
 
+    def _carregar_caminhos(self):
+        config = carregar_config()
+        if config.get("input_dir"):
+            self.input_entry.delete(0, "end")
+            self.input_entry.insert(0, config["input_dir"])
+            self.input_entry.configure(text_color=TEXT_PRIMARY)
+        if config.get("output_dir"):
+            self.output_entry.delete(0, "end")
+            self.output_entry.insert(0, config["output_dir"])
+            self.output_entry.configure(text_color=TEXT_PRIMARY)
+
     def _log(self, msg):
         self.log_text.insert("end", f"{msg}\n")
         self.log_text.see("end")
@@ -234,6 +267,8 @@ class PDFSplitterApp:
             return
 
         os.makedirs(output_dir, exist_ok=True)
+
+        salvar_config(input_dir, output_dir)
 
         self.processando = True
         self.exec_btn.configure(state="disabled", text="PROCESSANDO...")
