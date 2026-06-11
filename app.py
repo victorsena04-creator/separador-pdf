@@ -30,7 +30,18 @@ BTN_PRIMARY_TEXT = "#FFFFFF"
 BTN_SECONDARY_BG = "#D0D0D0"
 BTN_SECONDARY_TEXT = "#333333"
 
-CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
+def obter_diretorio_dados():
+    local_appdata = os.environ.get("LOCALAPPDATA")
+    if local_appdata:
+        diretorio = os.path.join(local_appdata, "SeparadorPDF")
+    else:
+        diretorio = os.path.join(os.path.expanduser("~"), ".separador_pdf")
+    os.makedirs(diretorio, exist_ok=True)
+    return diretorio
+
+DATA_DIR = obter_diretorio_dados()
+CONFIG_PATH = os.path.join(DATA_DIR, "config.json")
+
 
 
 def carregar_config():
@@ -289,7 +300,7 @@ class PDFSplitterApp:
             self.app.after(0, self._finalizar_processamento)
             return
 
-        logs_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
+        logs_dir = os.path.join(DATA_DIR, "logs")
         os.makedirs(logs_dir, exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         log_file = os.path.join(logs_dir, f"app_{timestamp}.log")

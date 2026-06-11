@@ -8,3 +8,4 @@ dist/
 *.exe
 venv/
 .venv/
+bin/

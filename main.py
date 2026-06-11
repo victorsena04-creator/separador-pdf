@@ -31,6 +31,41 @@ OUTPUT_DIR = "./output"
 LOGS_DIR = "./logs"
 
 
+def configurar_caminhos_dep():
+    """
+    Configura os caminhos para o Tesseract e Poppler.
+    Busca primeiro na pasta local 'bin' do aplicativo (para distribuição autossuficiente),
+    depois nos locais de instalação padrões do Windows.
+    Retorna o caminho do poppler_path (se encontrado) ou None.
+    """
+    try:
+        base_path = sys._MEIPASS
+    except AttributeError:
+        # Se não estiver no executável do PyInstaller, usa o diretório do script
+        base_path = os.path.dirname(os.path.abspath(__file__))
+
+    # 1. Configurar Tesseract
+    tesseract_local = os.path.join(base_path, "bin", "Tesseract-OCR", "tesseract.exe")
+    tesseract_padrao = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+    
+    if os.path.exists(tesseract_local):
+        pytesseract.pytesseract.tesseract_cmd = tesseract_local
+    elif os.path.exists(tesseract_padrao):
+        pytesseract.pytesseract.tesseract_cmd = tesseract_padrao
+        
+    # 2. Configurar Poppler
+    poppler_local = os.path.join(base_path, "bin", "poppler", "Library", "bin")
+    poppler_padrao = r"C:\poppler\bin"
+    
+    if os.path.exists(poppler_local):
+        return poppler_local
+    elif os.path.exists(poppler_padrao):
+        return poppler_padrao
+        
+    return None
+
+
+
 def configurar_pastas():
     """Garante que as pastas de entrada, saída e logs existam."""
     for pasta in [INPUT_DIR, OUTPUT_DIR, LOGS_DIR]:
@@ -194,11 +229,13 @@ def processar_pdf(caminho_pdf, logger, output_dir=None, progress_callback=None):
         if not placa:
             logger.info(f"Página {numero_pagina}: Iniciando fallback OCR...")
             try:
+                poppler_path = configurar_caminhos_dep()
                 imagens = convert_from_path(
                     caminho_pdf,
                     dpi=300,
                     first_page=numero_pagina,
-                    last_page=numero_pagina
+                    last_page=numero_pagina,
+                    poppler_path=poppler_path
                 )
                 if imagens:
                     imagem_pagina = imagens[0]
