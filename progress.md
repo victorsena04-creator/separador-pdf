@@ -8,3 +8,5 @@
 - [x] Fase 5: Testes e validação executados localmente (20 páginas separadas e nomeadas corretamente por placa sem erros de OCR).
 - [x] Fase 6: Criação do executável (`main.exe`) independente e silencioso para o Windows.
 - [x] Fase 7: Explicação final entregue para aprendizado do usuário.
+- [x] Fase 8: Disponibilização do arquivo de especificação do PyInstaller (.spec) no repositório e sincronização com o GitHub.
+
