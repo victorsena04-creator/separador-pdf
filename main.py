@@ -119,7 +119,7 @@ def extrair_placa_com_regex(texto):
 
 def extrair_data_pagamento(texto):
     """
-    Busca 'Data de Pagamento:' no texto e retorna a data normalizada como DD-MM-YYYY.
+    Busca 'Data de Pagamento:' ou 'Data de Arrecadação:' no texto e retorna a data normalizada como DD-MM-YYYY.
     Aceita formatos: DD/MM/AAAA, DDMMAAAA, DD-MM-YYYY, DD.MM.YYYY.
     Retorna 'SEM_DATA' se não encontrar.
     """
@@ -127,7 +127,7 @@ def extrair_data_pagamento(texto):
         return "SEM_DATA"
 
     padrao = re.compile(
-        r'data\s+de\s+pagamento\s*:\s*'
+        r'data\s+de\s+(?:pagamento|arrecada[çc][ãa]?o)\s*:\s*'
         r'(\d{1,2})\s*[/.-]\s*(\d{1,2})\s*[/.-]\s*(\d{2,4})',
         re.IGNORECASE
     )
@@ -141,7 +141,7 @@ def extrair_data_pagamento(texto):
         return f"{dia}-{mes}-{ano}"
 
     padrao_compacto = re.compile(
-        r'data\s+de\s+pagamento\s*:\s*(\d{2})(\d{2})(\d{4})',
+        r'data\s+de\s+(?:pagamento|arrecada[çc][ãa]?o)\s*:\s*(\d{2})(\d{2})(\d{4})',
         re.IGNORECASE
     )
     match2 = padrao_compacto.search(texto)
