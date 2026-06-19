@@ -119,35 +119,53 @@ def extrair_placa_com_regex(texto):
 
 def extrair_data_pagamento(texto):
     """
-    Busca 'Data de Pagamento:' ou 'Data de Arrecadação:' no texto e retorna a data normalizada como DD-MM-YYYY.
+    Busca 'Data de Pagamento:', 'Data de Arrecadação:' ou 'Data da Transação:' no texto 
+    e retorna a data normalizada como DD-MM-YYYY.
     Aceita formatos: DD/MM/AAAA, DDMMAAAA, DD-MM-YYYY, DD.MM.YYYY.
     Retorna 'SEM_DATA' se não encontrar.
     """
     if not texto:
         return "SEM_DATA"
 
+    # 1. Busca por padrão com delimitadores (tolerando até 150 caracteres de distância, como tabelas)
     padrao = re.compile(
-        r'data\s+de\s+(?:pagamento|arrecada[çc][ãa]?o)\s*:\s*'
+        r'(?:data\s+de\s+(?:pagamento|arrecada[çc][ãa]?o)|data\s+da\s+transa[çc]ã?o)'
+        r'[\s\S]{0,150}?'
         r'(\d{1,2})\s*[/.-]\s*(\d{1,2})\s*[/.-]\s*(\d{2,4})',
         re.IGNORECASE
     )
     match = padrao.search(texto)
     if match:
         dia, mes, ano = match.group(1), match.group(2), match.group(3)
-        dia = dia.zfill(2)
-        mes = mes.zfill(2)
-        if len(ano) == 2:
-            ano = "20" + ano
-        return f"{dia}-{mes}-{ano}"
+        try:
+            dia_int = int(dia)
+            mes_int = int(mes)
+            if 1 <= dia_int <= 31 and 1 <= mes_int <= 12:
+                dia = dia.zfill(2)
+                mes = mes.zfill(2)
+                if len(ano) == 2:
+                    ano = "20" + ano
+                return f"{dia}-{mes}-{ano}"
+        except ValueError:
+            pass
 
+    # 2. Busca por padrão compacto (sem delimitadores) - restrito à mesma linha para evitar falsos positivos
     padrao_compacto = re.compile(
-        r'data\s+de\s+(?:pagamento|arrecada[çc][ãa]?o)\s*:\s*(\d{2})(\d{2})(\d{4})',
+        r'(?:data\s+de\s+(?:pagamento|arrecada[çc][ãa]?o)|data\s+da\s+transa[çc]ã?o)'
+        r'[ \t]*:[ \t]*'
+        r'(\d{2})(\d{2})(\d{4})',
         re.IGNORECASE
     )
     match2 = padrao_compacto.search(texto)
     if match2:
         dia, mes, ano = match2.group(1), match2.group(2), match2.group(3)
-        return f"{dia}-{mes}-{ano}"
+        try:
+            dia_int = int(dia)
+            mes_int = int(mes)
+            if 1 <= dia_int <= 31 and 1 <= mes_int <= 12:
+                return f"{dia}-{mes}-{ano}"
+        except ValueError:
+            pass
 
     return "SEM_DATA"
 
