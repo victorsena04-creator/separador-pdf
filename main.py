@@ -206,21 +206,23 @@ def processar_pdf(caminho_pdf, logger, output_dir=None, progress_callback=None):
     logger.info(f"Iniciando processamento do PDF: {caminho_pdf}")
 
     try:
-        with open(caminho_pdf, 'rb') as f:
-            leitor = pypdf.PdfReader(f)
-            if leitor.is_encrypted:
-                logger.error("O arquivo PDF está protegido por senha. Processamento abortado.")
-                msg = f"Erro: '{os.path.basename(caminho_pdf)}' está protegido por senha."
-                if progress_callback:
-                    progress_callback("error", msg)
-                return {"erro": msg}
+        f_input = open(caminho_pdf, 'rb')
+        leitor = pypdf.PdfReader(f_input)
+        if leitor.is_encrypted:
+            logger.error("O arquivo PDF está protegido por senha. Processamento abortado.")
+            msg = f"Erro: '{os.path.basename(caminho_pdf)}' está protegido por senha."
+            f_input.close()
+            if progress_callback:
+                progress_callback("error", msg)
+            return {"erro": msg}
 
-            total_paginas = len(leitor.pages)
-
+        total_paginas = len(leitor.pages)
         logger.info(f"Total de páginas detectadas: {total_paginas}")
     except Exception as e:
         logger.error(f"Erro ao abrir o arquivo PDF: {e}")
         msg = f"Erro ao ler o PDF: {e}"
+        if 'f_input' in locals() and not f_input.closed:
+            f_input.close()
         if progress_callback:
             progress_callback("error", msg)
         return {"erro": msg}
@@ -321,8 +323,7 @@ def processar_pdf(caminho_pdf, logger, output_dir=None, progress_callback=None):
             logger.warning(f"Página {numero_pagina}: Nenhuma placa encontrada. Nomeando como: {nome_sanitizado}")
 
         try:
-            leitor_individual = pypdf.PdfReader(caminho_pdf)
-            pagina_selecionada = leitor_individual.pages[i]
+            pagina_selecionada = leitor.pages[i]
             
             escritor = pypdf.PdfWriter()
             escritor.add_page(pagina_selecionada)
@@ -347,6 +348,13 @@ def processar_pdf(caminho_pdf, logger, output_dir=None, progress_callback=None):
 
     if pdf_plumber_doc:
         pdf_plumber_doc.close()
+
+    # Fechar o stream do arquivo de entrada para liberar o lock no Windows
+    try:
+        f_input.close()
+        logger.info("Stream do arquivo PDF de entrada fechado com sucesso.")
+    except Exception as e:
+        logger.warning(f"Erro ao fechar o stream do arquivo de entrada: {e}")
 
     if total_paginas > 0 and (placas_encontradas + paginas_sem_placa) == total_paginas:
         try:
