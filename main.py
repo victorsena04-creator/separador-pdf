@@ -152,6 +152,38 @@ def extrair_data_pagamento(texto):
     return "SEM_DATA"
 
 
+def extrair_tipo_pagamento(texto):
+    """
+    Busca 'Cód. Serviço DETRAN:' no texto e determina o tipo de pagamento.
+    Se o código for '003' ou '006', o tipo é 'TRANSF'.
+    Se for outro código, o tipo é 'DÉBITOS'.
+    Retorna None se não encontrar o campo.
+    """
+    if not texto:
+        return None
+
+    # Regex flexível para capturar o código do serviço do DETRAN
+    padrao = re.compile(
+        r'c[oó]d\.?\s*servi[çc]o\s*detran\s*:\s*(\d+)',
+        re.IGNORECASE
+    )
+    match = padrao.search(texto)
+    if match:
+        codigo = match.group(1).strip()
+        try:
+            codigo_int = int(codigo)
+            if codigo_int in (3, 6):
+                return "TRANSF"
+            else:
+                return "DÉBITOS"
+        except ValueError:
+            if codigo in ("003", "006", "3", "6"):
+                return "TRANSF"
+            else:
+                return "DÉBITOS"
+    return None
+
+
 def obter_nome_unico_saida(pasta_saida, nome_base, data_pagamento, placas_geradas):
     """
     Retorna o caminho de saída com placa + data + sufixo de duplicidade.
@@ -212,6 +244,7 @@ def processar_pdf(caminho_pdf, logger, output_dir=None, progress_callback=None):
 
         placa = None
         data_pagamento = None
+        tipo_pagamento = None
         estrategia_usada = "Nenhuma"
 
         if pdf_plumber_doc:
@@ -220,6 +253,7 @@ def processar_pdf(caminho_pdf, logger, output_dir=None, progress_callback=None):
                 texto_direto = pagina.extract_text()
                 placa = extrair_placa_com_regex(texto_direto)
                 data_pagamento = extrair_data_pagamento(texto_direto)
+                tipo_pagamento = extrair_tipo_pagamento(texto_direto)
                 if placa:
                     estrategia_usada = "Extração Direta (pdfplumber)"
                     logger.info(f"Página {numero_pagina}: Placa '{placa}' encontrada via Extração Direta.")
@@ -242,6 +276,7 @@ def processar_pdf(caminho_pdf, logger, output_dir=None, progress_callback=None):
                     texto_ocr = pytesseract.image_to_string(imagem_pagina, lang='por')
                     placa = extrair_placa_com_regex(texto_ocr)
                     data_pagamento = extrair_data_pagamento(texto_ocr)
+                    tipo_pagamento = extrair_tipo_pagamento(texto_ocr)
 
                     if not placa:
                         logger.info(f"Página {numero_pagina}: Não encontrada placa com lang='por'. Tentando lang='eng'...")
@@ -249,6 +284,8 @@ def processar_pdf(caminho_pdf, logger, output_dir=None, progress_callback=None):
                         placa = extrair_placa_com_regex(texto_ocr_eng)
                         if data_pagamento == "SEM_DATA":
                             data_pagamento = extrair_data_pagamento(texto_ocr_eng)
+                        if not tipo_pagamento:
+                            tipo_pagamento = extrair_tipo_pagamento(texto_ocr_eng)
 
                     if placa:
                         estrategia_usada = "OCR (pytesseract)"
@@ -266,15 +303,20 @@ def processar_pdf(caminho_pdf, logger, output_dir=None, progress_callback=None):
             except Exception as e:
                 logger.error(f"Página {numero_pagina}: Erro durante processamento de OCR: {e}")
 
+        # Garantir que o tipo de pagamento tem um valor default
+        if not tipo_pagamento:
+            tipo_pagamento = "SEM_TIPO"
+
         if placa:
             placas_encontradas += 1
-            nome_sanitizado = sanitizar_nome_arquivo(placa)
+            placa_limpa = sanitizar_nome_arquivo(placa)
+            nome_sanitizado = f"{placa_limpa}-{tipo_pagamento}"
             if not data_pagamento:
                 data_pagamento = "SEM_DATA"
             logger.info(f"Página {numero_pagina}: Nome: {nome_sanitizado}_{data_pagamento}")
         else:
             paginas_sem_placa += 1
-            nome_sanitizado = f"PAGINA_{numero_pagina}_SEM_PLACA"
+            nome_sanitizado = f"PAGINA_{numero_pagina}_SEM_PLACA-{tipo_pagamento}"
             data_pagamento = "SEM_DATA"
             logger.warning(f"Página {numero_pagina}: Nenhuma placa encontrada. Nomeando como: {nome_sanitizado}")
 

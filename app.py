@@ -30,6 +30,114 @@ BTN_PRIMARY_TEXT = "#FFFFFF"
 BTN_SECONDARY_BG = "#D0D0D0"
 BTN_SECONDARY_TEXT = "#333333"
 
+APP_VERSION = "1.1.0"
+
+
+class DownloadProgressWindow(ctk.CTkToplevel):
+    def __init__(self, parent, version, download_url):
+        super().__init__(parent)
+        self.title("Atualizando...")
+        self.geometry("400x160")
+        self.resizable(False, False)
+        self.configure(fg_color=BG_WINDOW)
+        
+        # Manter sempre visível e focar
+        self.transient(parent)
+        self.grab_set()
+        
+        # Centralizar a janela em relação ao pai
+        self.update_idletasks()
+        x = parent.winfo_x() + (parent.winfo_width() - self.winfo_width()) // 2
+        y = parent.winfo_y() + (parent.winfo_height() - self.winfo_height()) // 2
+        self.geometry(f"+{x}+{y}")
+        
+        self.label = ctk.CTkLabel(
+            self, 
+            text=f"Baixando versão {version}...",
+            font=("Inter", 13, "bold"),
+            text_color=TEXT_PRIMARY
+        )
+        self.label.pack(pady=(20, 10))
+        
+        self.progress_bar = ctk.CTkProgressBar(
+            self, 
+            width=320, 
+            fg_color=BG_FIELD, 
+            progress_color=BTN_PRIMARY_BG
+        )
+        self.progress_bar.pack(pady=10)
+        self.progress_bar.set(0)
+        
+        self.status_label = ctk.CTkLabel(
+            self, 
+            text="Iniciando download... 0%",
+            font=("Inter", 11),
+            text_color=TEXT_SECONDARY
+        )
+        self.status_label.pack()
+        
+        self.parent = parent
+        self.download_url = download_url
+        self.version = version
+        
+        threading.Thread(target=self._download_e_instalar, daemon=True).start()
+
+    def _download_e_instalar(self):
+        import urllib.request
+        import tempfile
+        import ssl
+        
+        try:
+            req = urllib.request.Request(
+                self.download_url,
+                headers={"User-Agent": "SeparadorPDF-Updater"}
+            )
+            context = ssl.create_default_context()
+            
+            with urllib.request.urlopen(req, context=context, timeout=30) as response:
+                total_size = int(response.info().get('Content-Length', 0))
+                block_size = 1024 * 32
+                downloaded = 0
+                
+                temp_dir = tempfile.gettempdir()
+                installer_path = os.path.join(temp_dir, f"SeparadorPDF_Instalador_{self.version}.exe")
+                
+                with open(installer_path, 'wb') as out_file:
+                    while True:
+                        buffer = response.read(block_size)
+                        if not buffer:
+                            break
+                        downloaded += len(buffer)
+                        out_file.write(buffer)
+                        
+                        if total_size > 0:
+                            percent = downloaded / total_size
+                            self.after(0, lambda p=percent: self._atualizar_progresso(p))
+                
+                self.after(0, lambda: self._executar_instalador(installer_path))
+        except Exception as e:
+            self.after(0, lambda err=e: self._tratar_erro(err))
+
+    def _atualizar_progresso(self, percent):
+        self.progress_bar.set(percent)
+        self.status_label.configure(text=f"Progresso: {int(percent * 100)}%")
+
+    def _executar_instalador(self, path):
+        try:
+            os.startfile(path)
+            self.parent.destroy()
+            os._exit(0)
+        except Exception as e:
+            messagebox.showerror("Erro ao Executar", f"Falha ao iniciar o instalador:\n{e}")
+            self.grab_release()
+            self.destroy()
+
+    def _tratar_erro(self, err):
+        messagebox.showerror("Erro de Atualização", f"Falha ao baixar a atualização:\n{err}")
+        self.grab_release()
+        self.destroy()
+
+
 def obter_diretorio_dados():
     local_appdata = os.environ.get("LOCALAPPDATA")
     if local_appdata:
@@ -65,7 +173,7 @@ def salvar_config(input_dir, output_dir):
 class PDFSplitterApp:
     def __init__(self):
         self.app = ctk.CTk()
-        self.app.title("Separador de PDF")
+        self.app.title(f"Separador de PDF v{APP_VERSION}")
         self.app.geometry("580x480")
         self.app.resizable(False, False)
         self.app.configure(fg_color=BG_WINDOW)
@@ -78,6 +186,9 @@ class PDFSplitterApp:
         self._build_ui()
         self._carregar_caminhos()
 
+        # Iniciar verificação de atualizações em segundo plano
+        threading.Thread(target=self._verificar_atualizacoes, daemon=True).start()
+
     def _build_ui(self):
         container = ctk.CTkFrame(self.app, fg_color=BG_WINDOW, corner_radius=0)
         container.pack(fill="both", expand=True, padx=36, pady=32)
@@ -86,7 +197,7 @@ class PDFSplitterApp:
         title_frame.pack(fill="x")
 
         ctk.CTkLabel(
-            title_frame, text="Separador de PDF",
+            title_frame, text=f"Separador de PDF v{APP_VERSION}",
             font=("Inter", 20, "bold"),
             text_color=TEXT_PRIMARY,
             anchor="w"
@@ -329,6 +440,48 @@ class PDFSplitterApp:
 
         self.app.after(0, lambda: self._log(f"\nProcessamento de {len(arquivos_pdf)} arquivo(s) concluído!"))
         self.app.after(0, self._finalizar_processamento)
+
+    def _verificar_atualizacoes(self):
+        try:
+            import urllib.request
+            import json
+            import ssl
+            
+            context = ssl.create_default_context()
+            url = "https://api.github.com/repos/victorsena04-creator/separador-pdf/releases/latest"
+            req = urllib.request.Request(url, headers={"User-Agent": "SeparadorPDF-Updater"})
+            
+            with urllib.request.urlopen(req, context=context, timeout=10) as response:
+                data = json.loads(response.read().decode('utf-8'))
+                
+            tag_name = data.get("tag_name")
+            if not tag_name:
+                return
+                
+            def parse_version(v_str):
+                v_str = v_str.strip().lower().lstrip('v')
+                return [int(x) if x.isdigit() else 0 for x in v_str.split('.')]
+                
+            if parse_version(tag_name) > parse_version(APP_VERSION):
+                download_url = None
+                for asset in data.get("assets", []):
+                    if asset.get("name", "").endswith(".exe"):
+                        download_url = asset.get("browser_download_url")
+                        break
+                        
+                if download_url:
+                    self.app.after(0, lambda: self._perguntar_atualizacao(tag_name, download_url))
+        except Exception as e:
+            # Falhas de rede silenciadas para não impactar o usuário
+            pass
+
+    def _perguntar_atualizacao(self, tag_name, download_url):
+        resposta = messagebox.askyesno(
+            "Atualização Disponível",
+            f"Uma nova versão ({tag_name}) está disponível!\n\nDeseja baixar e instalar agora?"
+        )
+        if resposta:
+            DownloadProgressWindow(self.app, tag_name, download_url)
 
     def run(self):
         self.app.mainloop()
