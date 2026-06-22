@@ -11,11 +11,13 @@
 - [x] Fase 8: Disponibilização do arquivo de especificação do PyInstaller (.spec) no repositório e sincronização com o GitHub.
 - [x] **Fase 9: Atualizações Automáticas e Tipo de Pagamento (v1.1.0)**
   - [x] Extração flexível de 'Cód. Serviço DETRAN' com Regex.
-  - [x] Classificação do tipo como 'TRANSF' (003/006) ou 'DÉBITOS' (outros).
+  - [x] Classificação do tipo como 'TRANSF' (001/003/006) ou 'DÉBITOS' (outros).
   - [x] Alteração do padrão de salvamento para `PLACA-TIPO_DATA.pdf`.
   - [x] Execução de testes de validação unitária da Regex de extração com 100% de sucesso.
   - [x] Implementação da verificação assíncrona do GitHub Releases API com janela de progresso CustomTkinter (`DownloadProgressWindow`).
   - [x] Bump de versão em `setup.iss` e `app.py` para `1.1.0`.
   - [x] Validação da compilação do executável com PyInstaller.
-
-
+- [x] **Fase 10: Inclusão do Código 001 em TRANSF (v1.2.0)**
+  - [x] Atualização da lógica de classificação para incluir o código `001`.
+  - [x] Validação unitária com sucesso (`TRANSF`).
+  - [x] Bump de versão em `setup.iss` e `app.py` para `1.2.0`.

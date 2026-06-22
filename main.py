@@ -173,7 +173,7 @@ def extrair_data_pagamento(texto):
 def extrair_tipo_pagamento(texto):
     """
     Busca 'Cód. Serviço DETRAN:' no texto e determina o tipo de pagamento.
-    Se o código for '003' ou '006', o tipo é 'TRANSF'.
+    Se o código for '001', '003' ou '006', o tipo é 'TRANSF'.
     Se for outro código, o tipo é 'DÉBITOS'.
     Retorna None se não encontrar o campo.
     """
@@ -190,12 +190,12 @@ def extrair_tipo_pagamento(texto):
         codigo = match.group(1).strip()
         try:
             codigo_int = int(codigo)
-            if codigo_int in (3, 6):
+            if codigo_int in (1, 3, 6):
                 return "TRANSF"
             else:
                 return "DÉBITOS"
         except ValueError:
-            if codigo in ("003", "006", "3", "6"):
+            if codigo in ("001", "003", "006", "1", "3", "6"):
                 return "TRANSF"
             else:
                 return "DÉBITOS"

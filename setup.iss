@@ -1,6 +1,6 @@
 ; Script do Inno Setup para o Separador de PDF
 #define MyAppName "Separador de PDF"
-#define MyAppVersion "1.1.0"
+#define MyAppVersion "1.2.0"
 #define MyAppPublisher "Victor Sena"
 #define MyAppExeName "SeparadorPDF.exe"
 

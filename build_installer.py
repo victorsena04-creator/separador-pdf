@@ -66,6 +66,8 @@ def compilar_instalador():
     iscc_paths = [
         r"C:\Program Files (x86)\Inno Setup 6\ISCC.exe",
         r"C:\Program Files\Inno Setup 6\ISCC.exe",
+        os.path.expandvars(r"%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe"),
+        os.path.expandvars(r"%USERPROFILE%\AppData\Local\Programs\Inno Setup 6\ISCC.exe"),
     ]
     
     iscc_found = None

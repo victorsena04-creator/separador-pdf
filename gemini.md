@@ -12,7 +12,7 @@
 - **Eficiência Primeiro:** O sistema deve priorizar a extração direta de texto (via pdfplumber).
 - **Resiliência (Fallback):** O OCR (via pytesseract) atua **apenas** quando a extração direta falha.
 - **Tolerância a falhas:** O script não deve parar caso uma página falhe; ele deve documentar o erro e prosseguir.
-- **Nomenclatura Segura:** Limpar caracteres inválidos do nome extraído da placa. O nome do arquivo salvo deve ter o padrão `PLACA-TIPO_DATA`, onde o `TIPO` é definido com base no campo `Cód. Serviço DETRAN:` (sendo `TRANSF` para códigos `003` ou `006`, e `DÉBITOS` para outros). Se não achar placa, usar `PAGINA_{numero}_SEM_PLACA-{TIPO}_SEM_DATA.pdf`.
+- **Nomenclatura Segura:** Limpar caracteres inválidos do nome extraído da placa. O nome do arquivo salvo deve ter o padrão `PLACA-TIPO_DATA`, onde o `TIPO` é definido com base no campo `Cód. Serviço DETRAN:` (sendo `TRANSF` para códigos `001`, `003` ou `006`, e `DÉBITOS` para outros). Se não achar placa, usar `PAGINA_{numero}_SEM_PLACA-{TIPO}_SEM_DATA.pdf`.
 - **Auto-Atualização:** O aplicativo integrado com a interface de usuário CustomTkinter deve buscar por novas versões no GitHub Releases e possibilitar a atualização de forma automatizada ao usuário.
 
 ## Invariantes Arquiteturais

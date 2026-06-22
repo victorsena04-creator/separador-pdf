@@ -30,7 +30,7 @@ BTN_PRIMARY_TEXT = "#FFFFFF"
 BTN_SECONDARY_BG = "#D0D0D0"
 BTN_SECONDARY_TEXT = "#333333"
 
-APP_VERSION = "1.1.0"
+APP_VERSION = "1.2.0"
 
 
 class DownloadProgressWindow(ctk.CTkToplevel):
