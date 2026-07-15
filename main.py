@@ -207,18 +207,30 @@ def extrair_valor(texto):
 
 def extrair_tipo_pagamento(texto):
     """
-    Busca 'Cód. Serviço DETRAN:' no texto e determina o tipo de pagamento.
+    Busca 'Cód. Serviço DETRAN:' ou palavras-chave no texto e determina o tipo de pagamento.
     Se o código for '001', '003' ou '006', o tipo é 'TRANSF'.
-    Se o código for '089' ou '89', o tipo é 'TX REM'.
+    Se o código for '089', '89', '084' ou '84', o tipo é 'TX-REM'.
     Se for outro código, o tipo é 'DÉBITOS'.
-    Retorna None se não encontrar o campo.
+    Retorna None se não encontrar nenhum indicador.
     """
     if not texto:
         return None
 
-    # 1. Regex flexível para capturar o código do serviço do DETRAN
+    texto_upper = texto.upper()
+
+    # 1. Busca por palavras-chave diretas de Taxa de Remessa ou Remarcação (TX-REM)
+    palavras_chave_tx_rem = [
+        "TX REM", "TX-REM", "TX. REM", "TX.REM",
+        "TX REMESSA", "TX-REMESSA", "TX.REMESSA", "TX. REMESSA",
+        "TAXA REMESSA", "TAXA DE REMESSA", "TX DE REMESSA", "TX. DE REMESSA",
+        "REMARCACAO", "REMARCAÇÃO", "REMARCAÇO", "REMARCACO"
+    ]
+    if any(kw in texto_upper for kw in palavras_chave_tx_rem):
+        return "TX-REM"
+
+    # 2. Regex flexível para capturar o código do serviço do DETRAN (opcionalmente sem "DETRAN" ou com abreviações)
     padrao = re.compile(
-        r'c[oó]d\.?\s*servi[çc]o\s*detran\s*:\s*(\d+)',
+        r'(?:c[oó]d\.?(?:igo)?|servi[çc]o)\s*(?:detran)?\s*:\s*(\d+)',
         re.IGNORECASE
     )
     match = padrao.search(texto)
@@ -228,19 +240,19 @@ def extrair_tipo_pagamento(texto):
             codigo_int = int(codigo)
             if codigo_int in (1, 3, 6):
                 return "TRANSF"
-            elif codigo_int == 89:
-                return "TX REM"
+            elif codigo_int in (84, 89):
+                return "TX-REM"
             else:
                 return "DÉBITOS"
         except ValueError:
             if codigo in ("001", "003", "006", "1", "3", "6"):
                 return "TRANSF"
-            elif codigo in ("089", "89"):
-                return "TX REM"
+            elif codigo in ("084", "089", "84", "89"):
+                return "TX-REM"
             else:
                 return "DÉBITOS"
 
-    # 2. Busca secundária por códigos de serviço no formato de tabela (ex: "084 - Autorização...")
+    # 3. Busca secundária por códigos de serviço no formato de tabela (ex: "084 - Autorização...")
     padrao_tabela = re.compile(
         r'\b(\d{2,3})\s*-\s*',
         re.IGNORECASE
@@ -252,22 +264,22 @@ def extrair_tipo_pagamento(texto):
             codigo_int = int(codigo)
             if codigo_int in (1, 3, 6):
                 return "TRANSF"
-            elif codigo_int == 89:
-                return "TX REM"
+            elif codigo_int in (84, 89):
+                return "TX-REM"
             else:
                 return "DÉBITOS"
         except ValueError:
             if codigo in ("001", "003", "006", "1", "3", "6"):
                 return "TRANSF"
-            elif codigo in ("089", "89"):
-                return "TX REM"
+            elif codigo in ("084", "089", "84", "89"):
+                return "TX-REM"
             else:
                 return "DÉBITOS"
 
-    # 3. Classificação pelo valor
+    # 4. Classificação pelo valor (valor de 63,39 da remarcação de chassi)
     valor = extrair_valor(texto)
     if valor in ("63,39", "63.39"):
-        return "DÉBITOS"
+        return "TX-REM"
 
     return None
 

@@ -28,4 +28,11 @@
   - [x] Implementação de regra para salvar código `89` / `089` como `TX REM`.
   - [x] Validação com sucesso dos dois arquivos fornecidos no diretório `pdf/` (100% das 131 páginas separadas e classificadas com sucesso).
   - [x] Bump de versão em `app.py` para `1.3.0`.
+- [x] **Fase 12: Aprimoramento do Reconhecimento de TX-REM e Ajuste de Nomenclatura (v1.3.1)**
+  - [x] Ajuste do nome da categoria para `TX-REM` (com hífen) para bater com os arquivos gerados.
+  - [x] Criação de busca por palavras-chave (ex: `TX REMESSA`, `TX-REM`, `REMARCAÇÃO`) para identificar as taxas de remessa e de remarcação de chassi de forma robusta.
+  - [x] Classificação dos códigos de remarcação (`084` e `84`) e valor correspondente (`63,39`) diretamente como `TX-REM` em vez de `DÉBITOS`.
+  - [x] Bump de versão para `1.3.1` em `app.py` e `setup.iss`.
+  - [x] Recompilação com sucesso do instalador `.exe`.
+  - [x] Commit e push no GitHub.
 
