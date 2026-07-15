@@ -170,17 +170,53 @@ def extrair_data_pagamento(texto):
     return "SEM_DATA"
 
 
+def extrair_valor(texto):
+    """
+    Busca o valor total do pagamento no texto da página.
+    """
+    if not texto:
+        return "SEM_VALOR"
+    
+    # 1. Tentar extrair valor após "Valor Total:" ou "VALOR TOTAL"
+    padrao_valor_total = re.compile(r'(?:valor\s+total|valor)\s*:?\s*(?:r\$\s*)?(\d{1,3}(?:\.\d{3})*,\d{2})', re.IGNORECASE)
+    match = padrao_valor_total.search(texto)
+    if match:
+        return match.group(1)
+        
+    # 2. Caso de tabelas onde "Valor Total" está no cabeçalho e o valor está na linha seguinte
+    linhas = texto.split("\n")
+    for i, linha in enumerate(linhas):
+        if "valor total" in linha.lower() and i + 1 < len(linhas):
+            linha_seg = linhas[i+1]
+            match_seg = re.findall(r'\b\d{1,3}(?:\.\d{3})*,\d{2}\b', linha_seg)
+            if match_seg:
+                return match_seg[-1]
+                
+    # 3. Fallback: procurar por qualquer valor com R$
+    match_rs = re.findall(r'r\$\s*(\d{1,3}(?:\.\d{3})*,\d{2})', texto, re.IGNORECASE)
+    if match_rs:
+        return match_rs[0]
+        
+    # 4. Fallback final: procurar por qualquer padrão de valor com vírgula no texto
+    match_qualquer = re.findall(r'\b\d{1,3}(?:\.\d{3})*,\d{2}\b', texto)
+    if match_qualquer:
+        return match_qualquer[0]
+
+    return "SEM_VALOR"
+
+
 def extrair_tipo_pagamento(texto):
     """
     Busca 'Cód. Serviço DETRAN:' no texto e determina o tipo de pagamento.
     Se o código for '001', '003' ou '006', o tipo é 'TRANSF'.
+    Se o código for '089' ou '89', o tipo é 'TX REM'.
     Se for outro código, o tipo é 'DÉBITOS'.
     Retorna None se não encontrar o campo.
     """
     if not texto:
         return None
 
-    # Regex flexível para capturar o código do serviço do DETRAN
+    # 1. Regex flexível para capturar o código do serviço do DETRAN
     padrao = re.compile(
         r'c[oó]d\.?\s*servi[çc]o\s*detran\s*:\s*(\d+)',
         re.IGNORECASE
@@ -192,13 +228,47 @@ def extrair_tipo_pagamento(texto):
             codigo_int = int(codigo)
             if codigo_int in (1, 3, 6):
                 return "TRANSF"
+            elif codigo_int == 89:
+                return "TX REM"
             else:
                 return "DÉBITOS"
         except ValueError:
             if codigo in ("001", "003", "006", "1", "3", "6"):
                 return "TRANSF"
+            elif codigo in ("089", "89"):
+                return "TX REM"
             else:
                 return "DÉBITOS"
+
+    # 2. Busca secundária por códigos de serviço no formato de tabela (ex: "084 - Autorização...")
+    padrao_tabela = re.compile(
+        r'\b(\d{2,3})\s*-\s*',
+        re.IGNORECASE
+    )
+    match_tabela = padrao_tabela.search(texto)
+    if match_tabela:
+        codigo = match_tabela.group(1).strip()
+        try:
+            codigo_int = int(codigo)
+            if codigo_int in (1, 3, 6):
+                return "TRANSF"
+            elif codigo_int == 89:
+                return "TX REM"
+            else:
+                return "DÉBITOS"
+        except ValueError:
+            if codigo in ("001", "003", "006", "1", "3", "6"):
+                return "TRANSF"
+            elif codigo in ("089", "89"):
+                return "TX REM"
+            else:
+                return "DÉBITOS"
+
+    # 3. Classificação pelo valor
+    valor = extrair_valor(texto)
+    if valor in ("63,39", "63.39"):
+        return "DÉBITOS"
+
     return None
 
 
@@ -206,15 +276,24 @@ def obter_nome_unico_saida(pasta_saida, nome_base, data_pagamento, placas_gerada
     """
     Retorna o caminho de saída com placa + data + sufixo de duplicidade.
     Formato: {PLACA}_{DATA}.pdf ou {PLACA}_{DATA}_{N}.pdf
+    Garante que não sobrescreva arquivos existentes no disco.
     """
     chave = f"{nome_base}_{data_pagamento}"
     if chave not in placas_geradas:
         placas_geradas[chave] = 1
-        return os.path.join(pasta_saida, f"{nome_base}_{data_pagamento}.pdf")
+        caminho = os.path.join(pasta_saida, f"{nome_base}_{data_pagamento}.pdf")
     else:
         placas_geradas[chave] += 1
         contador = placas_geradas[chave]
-        return os.path.join(pasta_saida, f"{nome_base}_{data_pagamento}_{contador}.pdf")
+        caminho = os.path.join(pasta_saida, f"{nome_base}_{data_pagamento}_{contador}.pdf")
+
+    # Garante que o arquivo físico não existe no disco (evita sobrescrever execuções anteriores ou outros arquivos)
+    while os.path.exists(caminho):
+        placas_geradas[chave] += 1
+        contador = placas_geradas[chave]
+        caminho = os.path.join(pasta_saida, f"{nome_base}_{data_pagamento}_{contador}.pdf")
+
+    return caminho
 
 
 def processar_pdf(caminho_pdf, logger, output_dir=None, progress_callback=None):

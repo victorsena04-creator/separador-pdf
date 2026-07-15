@@ -21,3 +21,11 @@
   - [x] Atualização da lógica de classificação para incluir o código `001`.
   - [x] Validação unitária com sucesso (`TRANSF`).
   - [x] Bump de versão em `setup.iss` e `app.py` para `1.2.0`.
+- [x] **Fase 11: Correção de Sobrescrita e Classificação por Valor/Código de Tabela (v1.3.0)**
+  - [x] Correção de nomes duplicados usando `os.path.exists` para evitar sobrescrever arquivos de execuções anteriores ou arquivos distintos.
+  - [x] Extração de valores e suporte a códigos de tabela (como o código `084` de remarcação de chassi).
+  - [x] Classificação de comprovantes sem Detran code pelo valor (`63,39` -> `DÉBITOS`).
+  - [x] Implementação de regra para salvar código `89` / `089` como `TX REM`.
+  - [x] Validação com sucesso dos dois arquivos fornecidos no diretório `pdf/` (100% das 131 páginas separadas e classificadas com sucesso).
+  - [x] Bump de versão em `app.py` para `1.3.0`.
+
